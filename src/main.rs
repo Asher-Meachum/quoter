@@ -1,14 +1,17 @@
+use crate::text::Quote;
+use rand::seq::IndexedRandom;
+
 fn initialise() {
-    use crate::file::DataDirectory;
+    use crate::file;
     use std::fs::{DirBuilder, File};
     use std::fs;
 
-    let path: String = DataDirectory::new(None).get_path();
+    let path: String = format!("{}/{}", file::home_dir_string(), ".config/quoter".to_string());
     match fs::read_dir(path.clone()) {
         Ok(_) => (),
         Err(_) => {
             DirBuilder::new().recursive(true).create(path.clone()).expect("Internal error: couldn't initialise directory in ~/.config/quoter");
-            File::create(format!("{}{}", path, "quotes.index")).expect("Internal error: Failed to create index file");
+            File::create(format!("{}/{}", path, "quotes.index")).expect("Internal error: Failed to create index file");
         },
     }
 }
@@ -31,15 +34,35 @@ fn main() {
     initialise();
 
     match args::parse_args() {
-        args::Arg::Add => file::write_quote(text::Quote::new_from_input()),
-        args::Arg::Generate => todo!(),
-        args::Arg::Help => println!("{}", help_text()),
-        args::Arg::Read(file) => println!("{}", file::read_quote(file)),
-        args::Arg::List => {
-            println!("Currently stored quotes are:");
-            println!("{}", file::list_quotes())
-        },
         args::Arg::ArgError(error) => println!("{}", error),
+        args::Arg::Help => println!("{}", help_text()),
+        args::Arg::Add => {
+            let quote: text::Quote = Quote::new_from_input();
+            let quote_file: file::DataFile = file::DataFile::new_quote(quote.title());
+            quote_file.write(quote.to_file_format());
+
+            let index: file::DataFile = file::DataFile::new_index();
+            index.write(quote.title());
+        },
+        args::Arg::Generate => {
+            let index: file::DataFile = file::DataFile::new_index();
+            let files: String = index.read();
+            match files.trim().split("\n").collect::<Vec<&str>>().choose(&mut rand::rng()) {
+                Some(chosen) => {
+                    let quote: file::DataFile = file::DataFile::new_quote(String::from(*chosen));
+                    println!("{}", quote.read());
+                },
+                None => println!("No files stored. Use quoter --add to add one.")
+            };
+        },
+        args::Arg::List => {
+            let index: file::DataFile = file::DataFile::new_index();
+            println!("Your stored quotes are:\n{}", index.read())
+        },
+        args::Arg::Read(title) => {
+            let quote: file::DataFile = file::DataFile::new_quote(title);
+            println!("{}", quote.read());
+        }
     }
 }
 
@@ -84,72 +107,55 @@ pub mod args {
 }
 
 pub mod file {
-    use std::fs::File;
+    use std::fs::OpenOptions;
     use std::io::{Read, Write};
     use std::env;
     use std::hash::{DefaultHasher, Hash, Hasher};
 
+    pub fn home_dir_string() -> String {
+        let home = env::home_dir().expect("Internal error: could not find home directory");
+        home.display().to_string()
+    }
+
     #[derive(Hash)]
-    pub struct DataDirectory {
-        name: Option<String>,
+    enum FileType{
+        Index,
+        Quote,
+    }
+
+    #[derive(Hash)]
+    pub struct DataFile {
+        filetype: FileType,
+        name: String,
         path: String,
     }
 
-    impl DataDirectory {
-        pub fn new(file_name: Option<String>) -> DataDirectory {
-            let data_path: String = format!("{}/.config/quoter", env::home_dir().expect("Internal error: failed getting home directory").to_string_lossy());
-            DataDirectory{
-                name: file_name,
-                path: data_path,
+    impl DataFile {
+        pub fn new_quote(title: String) -> DataFile {
+            let mut hash: DefaultHasher = DefaultHasher::new();
+            title.hash(&mut hash);
+            DataFile{filetype: FileType::Quote, name: title.clone(), path: format!("{}/{}/{}", home_dir_string(), ".config/quoter".to_string(), hash.finish().to_string())}
+        }
+
+        pub fn new_index() -> DataFile{
+            DataFile{filetype: FileType::Index, name: "quotes.index".to_string(), path: format!("{}/{}", home_dir_string(), ".config/quoter/quotes.index".to_string())}
+        }
+
+        pub fn read(&self) -> String {
+            match OpenOptions::new().read(true).open(self.path.clone()) {
+                Ok(mut file) => {
+                    let mut contents: String = String::new();
+                    file.read_to_string(&mut contents).expect("Internal error: could not read file");
+                    contents
+                }
+                Err(_) => "Error: could not read quote. Are you sure it exists (use quoter --list to check)? ".to_string()
             }
         }
-
-        pub fn get_path(&self) -> String {
-            format!("{}/{}",
-             self.path, 
-             match self.name.clone() {
-                Some(name) => {
-                    let mut file_hash = DefaultHasher::new();
-                    name.hash(&mut file_hash);
-                    format!("{}", file_hash.finish())
-                },
-                None => String::from(""),
-            })
+        
+        pub fn write(&self, contents: String) {
+            let mut file: std::fs::File = OpenOptions::new().append(true).create(true).open(self.path.clone()).expect("Internal error: could not open file for writing");
+            file.write_all(format!("{}\n", contents).as_bytes()).expect("Internal error: could not write to file")
         }
-    }
-
-    pub fn list_quotes() -> String {
-        match File::open(format!("{}{}", DataDirectory::new(None).get_path(), "quotes.index")) {
-            Ok(mut index) => {
-                let mut contents: String = String::new();
-                index.read_to_string(&mut contents).expect("Internal error: Could not read index");
-                contents
-            }
-            Err(_) => String::from("Internal error: index file not found."),
-        }
-    }
-
-    pub fn read_quote(title: String) -> String {
-        let file_path: String = DataDirectory::new(Some(title)).get_path();
-
-        match File::open(file_path) {
-            Ok(mut file) => {
-                let mut contents: String = String::new();
-                file.read_to_string(&mut contents).expect("Internal error: Could not read file");
-                contents
-            },
-            Err(_) => String::from("Error: Quote file not found. Try quoter --list to see stored quotes"),
-        }
-    }
-
-    pub fn write_quote(quote: crate::text::Quote) {
-        let mut index: File = File::create(format!("{}{}", DataDirectory::new(None).get_path(), "quotes.index")).expect("Internal error: could not open index file");
-        index.write_all(quote.title().as_bytes()).expect("Internal error: could not update index file");
-
-        // Fix path traversal vulnerability from ..
-        let file_path: String = DataDirectory::new(Some(quote.title())).get_path();
-        let mut file: File = File::create(file_path).expect("Internal error: Failed to open file for writing.");
-        file.write_all(quote.to_file_format().as_bytes()).expect("Internal error: Failed to write to file")
     }
 }
 
