@@ -1,13 +1,23 @@
+//! Module for parsing command line arguments
+//!
+//! args provides a simple API to retrieve command line arguments
+//! ### Quickstart
+//! ```
+//! mod args;
+//! use crate::args::args as args;
+//! let arg_result: args::Arg = args::parse_args();
+//! ```
+
 pub mod args {
     use std::env;
 
     pub enum Arg {
         Add,
-        Help,
         ArgError(String),
-        Read(String),
         Generate,
+        Help,
         List,
+        Read(String),
     }
 
     fn collect_arg() -> Vec<String> {
@@ -15,6 +25,9 @@ pub mod args {
         arguments
     }
 
+    /// Returns the argument as an enum option from `args::Arg`.
+    /// 
+    /// ArgError is returned as a general catch all for unexpected arguments.
     pub fn parse_args() -> Arg {
         let args: Vec<String> = collect_arg();
 
