@@ -13,37 +13,42 @@ pub mod args {
 
     pub enum Arg {
         Add,
-        ArgError(String),
+        InvalidArg(&'static str),
         Generate,
         Help,
         List,
         Read(String),
     }
 
-    fn collect_arg() -> Vec<String> {
-        let arguments: Vec<String> = env::args().collect();
-        arguments
-    }
-
     /// Returns the argument as an enum option from `args::Arg`.
     /// 
-    /// ArgError is returned as a general catch all for unexpected arguments.
+    /// ### Errors
+    /// InvalidArg is used as a catch-all for missing/invalid arguments.
+    /// It must be noted that non-UTF-8 CLI args will cause a panic. This is a limitation of
+    /// `std::env::args()`, and has been deemed better than the alternative of handling 
+    /// malformed text.
     pub fn parse_args() -> Arg {
-        let args: Vec<String> = collect_arg();
+        let args: Vec<String> = env::args().collect();
 
         match args.get(1) {
             Some(arg) => {
                 match arg as &str {
                     "-a" | "--add" => Arg::Add,
                     "-r" | "--read" => {
-                        match args.get(2) {
-                            Some(file) => Arg::Read(file.to_string()),
-                            None => Arg::ArgError("Error: quote title not provided".to_string()),
+                        match args.get(2..) {
+                            Some(file) => {
+                                let mut name: String = String::new();
+                                for word in file.iter() {
+                                    name = format!("{} {}", name, word)
+                                }
+                                Arg::Read(name)
+                            },
+                            None => Arg::InvalidArg("Error: quote title not provided"),
                         } 
                     },
                     "-h" | "--help" => Arg::Help,
                     "-l" | "--list" => Arg::List,
-                    _ => Arg::ArgError(String::from("Error: Unknown flag")),
+                    _ => Arg::InvalidArg("Error: Unknown flag"),
                 }
             },
             None => Arg::Generate,
