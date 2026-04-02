@@ -38,6 +38,7 @@ fn main() {
         },
         args::Arg::Read(title) => {
             println!("{}", storage.read(title));
-        }
+        },
+        args::Arg::Delete(title) => storage.delete(title),
     }
 }
