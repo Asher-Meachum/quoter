@@ -13,6 +13,18 @@ pub struct Quote {
 }
 
 impl Quote {
+    pub fn contents(&self) -> [String; 3] {
+        [self.title.clone(), self.author.clone(), self.text.clone()]
+    }
+
+    pub fn new(title: String, author: String, text: String) -> Quote {
+        Quote {
+            title,
+            author,
+            text
+        }
+    }
+
     /// This method serves as an initialisaton for Quote.
     /// It takes the data and metadata fields directly from stdin, and handles user prompting.
     pub fn new_from_input() -> Quote {

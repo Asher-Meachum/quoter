@@ -36,7 +36,20 @@ fn data_dir_init(data_dir: String) {
 
 fn db_init(db_path: String) -> QuoteStorage {
     let db = Connection::open(&db_path).unwrap();
-    db.table_exists(Some("main"), "quotes").unwrap();
+    match db.table_exists(Some("main"), "quotes") {
+        Ok(true) => {},
+        Ok(false) => {
+            db.execute(
+                "CREATE TABLE quotes (
+                    id INT PRIMARY KEY, 
+                    title TEXT NOT NULL,
+                    author TEXT,
+                    content TEXT)", 
+                ()
+            ).unwrap();
+        },
+        Err(_) => todo!(),
+    }
 
     let columns: [bool; 4] = [
         db.column_exists(Some("main"), "quotes", "id").unwrap(),
@@ -50,10 +63,10 @@ fn db_init(db_path: String) -> QuoteStorage {
             continue;
         } else {
             match i {
-                0 => {db.execute("ALTER TABLE quotes ADD id PRIMARY KEY", ()).unwrap();},
-                1 => {db.execute("ALTER TABLE quotes ADD title varchar(255)", ()).unwrap();},
-                2 => {db.execute("ALTER TABLE quotes ADD author varchar(255)", ()).unwrap();},
-                3 => {db.execute("ALTER TABLE quotes ADD content varchar(65535)", ()).unwrap();},
+                0 => {db.execute("ALTER TABLE quotes ADD id INT PRIMARY KEY", ()).unwrap();},
+                1 => {db.execute("ALTER TABLE quotes ADD title TEXT NOT NULL", ()).unwrap();},
+                2 => {db.execute("ALTER TABLE quotes ADD author TEXT", ()).unwrap();},
+                3 => {db.execute("ALTER TABLE quotes ADD content TEXT", ()).unwrap();},
                 _ => panic!("Internal logic error: columns.len() was set too high"),
             }
         }
@@ -69,14 +82,34 @@ pub struct QuoteStorage {
 
 impl QuoteStorage {
     pub fn list(&self) -> Vec<String> {
-        todo!("Implement list");
+        let mut stmt = self.db.prepare("SELECT title FROM quotes").unwrap();
+        let titles = stmt.query_map(
+            (), 
+            |row| row.get(0),
+        ).unwrap();
+        titles.map(|x| x.unwrap()).collect()
     }
 
     pub fn read(&self, name: String) -> Quote {
-        todo!("Implement read");
+        let mut stmt = self.db.prepare("SELECT title, author, content FROM quotes WHERE title = ?1").unwrap();
+        let mut quotes = stmt.query_map(
+            [name], 
+            |row| Ok(Quote::new(row.get(0).unwrap(), row.get(1).unwrap(), row.get(2).unwrap()))
+        ).unwrap();
+
+        let quote: Quote = match quotes.next() {
+            Some(column_content) => column_content.unwrap(),
+            None => panic!(),
+        };
+        
+        quote
     }
     
     pub fn add(&self, contents: Quote) {
-        todo!("Implement write");
+        let quote = contents.contents();
+        self.db.execute(
+            "INSERT INTO quotes (title, author, content) VALUES (?1, ?2, ?3)", 
+            (quote[0].clone(), quote[1].clone(), quote[2].clone())
+        ).unwrap();
     }
 }
