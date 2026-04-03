@@ -13,7 +13,8 @@ pub mod args {
 
     pub enum Arg {
         Add,
-        InvalidArg(&'static str),
+        ArgError(String),
+        Delete(String),
         Generate,
         Help,
         List,
@@ -45,6 +46,12 @@ pub mod args {
                             },
                             None => Arg::InvalidArg("Error: quote title not provided"),
                         } 
+                    },
+                    "-d" | "--delete" => {
+                        match args.get(2) {
+                            Some(file) => Arg::Delete(file.to_string()),
+                            None => Arg::ArgError("Error: quote title not provided".to_string()),
+                        }
                     },
                     "-h" | "--help" => Arg::Help,
                     "-l" | "--list" => Arg::List,

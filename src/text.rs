@@ -1,4 +1,4 @@
-use std::io;
+use std::fmt;
 
 /// Quote is an internal struct used to store both quote data and metadata.
 /// At this time, you can only initialise a Quote with data from stdin.
@@ -13,6 +13,18 @@ pub struct Quote {
 }
 
 impl Quote {
+    pub fn contents(&self) -> [String; 3] {
+        [self.title.clone(), self.author.clone(), self.text.clone()]
+    }
+
+    pub fn new(title: String, author: String, text: String) -> Quote {
+        Quote {
+            title,
+            author,
+            text
+        }
+    }
+
     /// This method serves as an initialisaton for Quote.
     /// It takes the data and metadata fields directly from stdin, and handles user prompting.
     pub fn new_from_input() -> Result<Quote, io::Error> {
@@ -30,16 +42,11 @@ impl Quote {
         };
         Ok(quote)
     }
+}
 
-    /// This methods serialises the data into the format used for storage.
-    /// The serialisation places each struct field on a new line.
-    pub fn to_file_format(&self) -> String {
-        format!("{}\n{}\n{}", self.title, self.author, self.text)
-    }
-
-    /// Returns the title field of the struct as an owned String.
-    pub fn title(&self) -> String {
-        self.title.clone()
+impl fmt::Display for Quote {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}\n{}\n{}", self.title, self.author, self.text)
     }
 }
 
