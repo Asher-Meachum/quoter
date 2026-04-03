@@ -36,41 +36,23 @@ fn data_dir_init(data_dir: String) {
 
 fn db_init(db_path: String) -> QuoteStorage {
     let db = Connection::open(&db_path).unwrap();
-    match db.table_exists(Some("main"), "quotes") {
-        Ok(true) => {},
-        Ok(false) => {
-            db.execute(
-                "CREATE TABLE quotes (
-                    id INT PRIMARY KEY, 
-                    title TEXT NOT NULL,
-                    author TEXT,
-                    content TEXT)", 
-                ()
-            ).unwrap();
-        },
-        Err(_) => todo!(),
-    }
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS quotes (
+                id INT PRIMARY KEY, 
+                title TEXT NOT NULL UNIQUE,
+                author TEXT,
+                content TEXT)", 
+            ()
+        ).unwrap();
 
-    let columns: [bool; 4] = [
-        db.column_exists(Some("main"), "quotes", "id").unwrap(),
-        db.column_exists(Some("main"), "quotes", "title").unwrap(),
-        db.column_exists(Some("main"), "quotes", "author").unwrap(),
-        db.column_exists(Some("main"), "quotes", "content").unwrap(),
-    ];
+    let columns: [&'static str; 3] = ["title", "author", "content"];
 
-    for i in 0..columns.len() {
-        if columns[i] {
-            continue;
-        } else {
-            match i {
-                0 => {db.execute("ALTER TABLE quotes ADD id INT PRIMARY KEY", ()).unwrap();},
-                1 => {db.execute("ALTER TABLE quotes ADD title TEXT NOT NULL", ()).unwrap();},
-                2 => {db.execute("ALTER TABLE quotes ADD author TEXT", ()).unwrap();},
-                3 => {db.execute("ALTER TABLE quotes ADD content TEXT", ()).unwrap();},
-                _ => panic!("Internal logic error: columns.len() was set too high"),
-            }
+    for column in columns {
+        if ! db.column_exists(Some("main"), "quotes", column).unwrap() {
+            db.execute("ALTER TABLE quotes ADD ?1 TEXT", [column]).unwrap();
         }
     }
+
     QuoteStorage{db}
 }
 
