@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, io};
 
 /// Quote is an internal struct used to store both quote data and metadata.
 /// At this time, you can only initialise a Quote with data from stdin.
