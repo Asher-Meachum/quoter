@@ -4,7 +4,7 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::fs::{self, DirBuilder, File, OpenOptions};
 
 fn home_dir_string() -> String {
-    let home = env::home_dir().expect("Environment error: could not find home directory"); // This panic is intentional. The program cannot continue without knowing location of ~ and crashing here is safest and simplest place.
+    let home = env::home_dir().expect("Internal error: could not find home directory");
     home.display().to_string()
 }
 
@@ -13,14 +13,11 @@ fn home_dir_string() -> String {
 /// The data directory is not currently configureable at this time.
 pub fn initialise() {
     let path: String = format!("{}/{}", crate::fileio::home_dir_string(), ".config/quoter".to_string());
-    // Replace with proper function, path_exists() or something similar
     match fs::read_dir(path.clone()) {
         Ok(_) => (),
         Err(_) => {
-            DirBuilder::new().recursive(true).create(path.clone())
-                .expect("Internal error: couldn't initialise directory in ~/.config/quoter");
-            File::create(format!("{}/{}", path, "quotes.index"))
-                .expect("Internal error: Failed to create index file");
+            DirBuilder::new().recursive(true).create(path.clone()).expect("Internal error: couldn't initialise directory in ~/.config/quoter");
+            File::create(format!("{}/{}", path, "quotes.index")).expect("Internal error: Failed to create index file");
         },
     }
 }
@@ -41,12 +38,12 @@ impl DataFile {
     pub fn new_quote(title: String) -> DataFile {
         let mut hash: DefaultHasher = DefaultHasher::new();
         title.hash(&mut hash);
-        DataFile{name: title.clone(), path: format!("{}/.config/quoter/{}", home_dir_string(), hash.finish().to_string())}
+        DataFile{name: title.clone(), path: format!("{}/{}/{}", home_dir_string(), ".config/quoter".to_string(), hash.finish().to_string())}
     }
 
     /// Initialises the index file with the correct name and path, `quotes.index` and `~/.config/quoter/quotes.index`, respectively.
     pub fn new_index() -> DataFile{
-        DataFile{name: "quotes.index".to_string(), path: format!("{}/.config/quoter/quotes.index", home_dir_string())}
+        DataFile{name: "quotes.index".to_string(), path: format!("{}/{}", home_dir_string(), ".config/quoter/quotes.index".to_string())}
     }
 
     /// This method reads the data from a stored file, using the path field as the file path.
