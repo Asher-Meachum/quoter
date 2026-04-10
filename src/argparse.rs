@@ -13,7 +13,8 @@ pub mod args {
 
     pub enum Arg {
         Add,
-        InvalidArg(&'static str),
+        ArgError(String),
+        Delete(String),
         Generate,
         Help,
         List,
@@ -35,16 +36,16 @@ pub mod args {
                 match arg as &str {
                     "-a" | "--add" => Arg::Add,
                     "-r" | "--read" => {
-                        match args.get(2..) {
-                            Some(file) => {
-                                let mut name: String = String::new();
-                                for word in file.iter() {
-                                    name = format!("{} {}", name, word)
-                                }
-                                Arg::Read(name)
-                            },
-                            None => Arg::InvalidArg("Error: quote title not provided"),
+                        match args.get(2) {
+                            Some(file) => Arg::Read(file.to_string()),
+                            None => Arg::ArgError("Error: quote title not provided".to_string()),
                         } 
+                    },
+                    "-d" | "--delete" => {
+                        match args.get(2) {
+                            Some(file) => Arg::Delete(file.to_string()),
+                            None => Arg::ArgError("Error: quote title not provided".to_string()),
+                        }
                     },
                     "-h" | "--help" => Arg::Help,
                     "-l" | "--list" => Arg::List,
