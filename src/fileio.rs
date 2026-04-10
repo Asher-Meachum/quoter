@@ -112,4 +112,8 @@ impl QuoteStorage {
             (quote[0].clone(), quote[1].clone(), quote[2].clone())
         ).unwrap();
     }
+
+    pub fn delete(&self, title: String) {
+        self.db.execute("DELETE FROM quotes WHERE title = ?1", [title]).unwrap();
+    }
 }
