@@ -1,10 +1,10 @@
 use std::env;
 use rusqlite::{Connection, Error};
-
 use std::fs::{self, DirBuilder};
 
 use crate::text::Quote;
 
+/// Custom error type to simplify errors from `rusqlite::Error`
 #[derive(Debug)]
 pub enum StorageError {
     ReadError,
@@ -30,9 +30,8 @@ impl From<rusqlite::Error> for StorageError {
     }
 }
 
-/// When called searches for the `~/.config/quoter` (the data directory) 
-/// and if not present, attempts to make a directory at `~/.config/quoter`.
-/// The data directory is not currently configureable at this time.
+/// Serves as an orchestrator of environment initialisation. For more details,
+/// see `data_dir_init()` and `db_init()`.
 pub fn initialise() -> Result<QuoteStorage, StorageError> {
     let path: String = format!(
         "{}/{}", 
@@ -45,6 +44,9 @@ pub fn initialise() -> Result<QuoteStorage, StorageError> {
     db_init(db)
 }
 
+/// When called searches for the `~/.config/quoter` (the data directory) 
+/// and if not present, attempts to make a directory at `~/.config/quoter`.
+/// The data directory is not currently configureable at this time.
 fn data_dir_init(data_dir: String) {
     match fs::read_dir(&data_dir) {
         Ok(_) => (),
@@ -57,6 +59,10 @@ fn data_dir_init(data_dir: String) {
     }
 }
 
+/// When called, it checks for database existance in the data directory.
+/// If a database exists, it validates the schema, and corrects it if incorrect.
+/// If a database does not exist, it creates one in that directory.
+/// It then returns the database connection.
 fn db_init(db_path: String) -> Result<QuoteStorage, StorageError> {
     let db = Connection::open(&db_path)?;
         db.execute(
@@ -79,13 +85,22 @@ fn db_init(db_path: String) -> Result<QuoteStorage, StorageError> {
     Ok(QuoteStorage{db})
 }
 
-/// This struct is used for internal file operations.
-/// To create an instance of this struct, use `DataFile::new_quote()`
+/// Container for the sqlite connection and commands.
+/// This struct cannot initialise itself. To use this,
+/// struct, use the return type from `initialise()`
+/// ## Quickstart
+/// ```
+/// let storage: QuoteStorage = initialise().unwrap();
+/// storage.list().unwrap();
+/// ```
 pub struct QuoteStorage {
     db: Connection,
 }
 
 impl QuoteStorage {
+    /// Lists all quotes stored in the database using the title field.
+    /// This function returns a Result<> value, however, it may panic if
+    /// retrieving the title from the SQLite response raises an error.
      pub fn list(&self) -> Result<Vec<String>, StorageError> {
         let mut stmt = self.db.prepare("SELECT title FROM quotes")?;
         let titles = stmt.query_map(
@@ -95,6 +110,9 @@ impl QuoteStorage {
         Ok(titles.map(|x| x.unwrap()).collect())
     }
 
+    /// Reads a quote with the given title.
+    /// Raises a `StorageError::ReadError` if the quote with selected title
+    /// does not exist.
     pub fn read(&self, name: String) -> Result<Quote, StorageError> {
         let mut stmt = self.db.prepare("SELECT title, author, content FROM quotes WHERE title = ?1")?;
         let mut quotes = stmt.query_map(
@@ -113,6 +131,9 @@ impl QuoteStorage {
         }
     }
     
+    /// Adds a quote to the database and returns unit type if successful.
+    /// This function is designed such that as long as schema passes
+    /// `initialisation()`, the schema should not cause a panic.
     pub fn add(&self, contents: Quote) -> Result<(), StorageError> {
         let quote = contents.contents();
         self.db.execute(
@@ -123,6 +144,8 @@ impl QuoteStorage {
         Ok(())
     }
 
+    /// Deletes a quote. This function will report success even for the deletion of
+    /// nonexistent quotes.
     pub fn delete(&self, title: String) -> Result<(), StorageError> {
         self.db.execute("DELETE FROM quotes WHERE title = ?1", [title])?;
         Ok(())
