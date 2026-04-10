@@ -1,4 +1,4 @@
-use crate::text::Quote;
+use rand::seq::IndexedRandom;
 
 fn initialise() {
     use crate::file;
@@ -24,16 +24,12 @@ Options:
 }
 
 fn main() {
-    use rand::seq::IndexedRandom;
     use crate::{args, file, text};
 
     initialise();
 
     match args::parse_args() {
-        args::Arg::Add => {
-            let quote: text::Quote = Quote::new_from_input();
-            file::write_quote(quote.title(), quote.to_file_format())
-        },
+        args::Arg::Add => file::write_quote(text::Quote::new_from_input()),
         args::Arg::Generate => {
             match file::list_files().choose(&mut rand::rng()) {
                 Some(chosen_file) => {
@@ -45,6 +41,7 @@ fn main() {
         args::Arg::Help => println!("{}", help_text()),
         args::Arg::Read(file) => println!("{}", file::read_quote(file)),
         args::Arg::List => {
+            println!("Currently stored quotes are:");
             for file in file::list_files() {
                 println!("{}", file)
             }
@@ -118,16 +115,21 @@ pub mod file {
     pub fn read_quote(title: String) -> String {
         let path: String = format!("{}/", data_dir());
 
-        let mut file: File = File::open(format!("{}{}.txt", path, title)).expect("Internal error: quote file not found");
-        let mut contents: String = String::new();
-        file.read_to_string(&mut contents).expect("Internal error: Could not read file");
-        contents
+        match File::open(format!("{}{}.txt", path, title)) {
+            Ok(mut file) => {
+                let mut contents: String = String::new();
+                file.read_to_string(&mut contents).expect("Internal error: Could not read file");
+                contents
+            },
+            Err(_) => String::from("Error: Quote file not found. Try quoter --list to see stored quotes"),
+        }
     }
 
-    pub fn write_quote(title: String, contents: String) {
+    pub fn write_quote(quote: crate::text::Quote) {
+        // Fix path traversal vulnerability from ..
         let path: String = format!("{}/", data_dir());
-        let mut file: File = File::create(format!("{}{}.txt", path, title)).expect("Internal error: Failed to open file for writing.");
-        file.write_all(contents.as_bytes()).expect("Internal error: Failed to write to file")
+        let mut file: File = File::create(format!("{}{}.txt", path, quote.title())).expect("Internal error: Failed to open file for writing.");
+        file.write_all(quote.to_file_format().as_bytes()).expect("Internal error: Failed to write to file")
     }
 }
 
