@@ -5,7 +5,6 @@ mod text;
 use rand::seq::IndexedRandom;
 use crate::{argparse::args, fileio::QuoteStorage, text::Quote};
 
-// TODO: Use static &str instead of String
 fn help_text() -> &'static str {
 "Usage: quoter [OPTIONS]
 
