@@ -8,12 +8,14 @@ use crate::{argparse::args, text::Quote};
 fn help_text() -> &'static str {
 "Usage: quoter [OPTIONS]
 
+Subcommands:
+  add             Add a quote
+  delete  <title> Delete the quote with title <title>
+  list            Display stored quote names
+  read    <title> Read the quote with title <title>
+
 Options:
-  -a, --add             Add a quote
-  -d, --delete  <title> Delete the quote with title <title>
-  -h, --help            Display this help message
-  -l, --list            Display stored quote names
-  -r, --read    <title> Read the quote with title <title>"
+    -h, --help            Display this help message"
 }
 
 fn main() {

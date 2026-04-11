@@ -33,8 +33,8 @@ pub mod args {
         match args.get(1) {
             Some(arg) => {
                 match arg as &str {
-                    "-a" | "--add" => Arg::Add,
-                    "-r" | "--read" => {
+                    "add" => Arg::Add,
+                    "read" => {
                         match args.get(2..) {
                             Some(file) => {
                                 Arg::Read(file.join(" ".trim()))
@@ -42,14 +42,14 @@ pub mod args {
                             None => Arg::InvalidArg("Error: quote title not provided"),
                         } 
                     },
-                    "-d" | "--delete" => {
+                    "delete" => {
                         match args.get(2) {
                             Some(file) => Arg::Delete(file.to_string()),
                             None => Arg::InvalidArg("Error: quote title not provided"),
                         }
                     },
                     "-h" | "--help" => Arg::Help,
-                    "-l" | "--list" => Arg::List,
+                    "list" => Arg::List,
                     _ => Arg::InvalidArg("Error: Unknown flag"),
                 }
             },
