@@ -4,7 +4,7 @@
 //! ### Quickstart
 //! ```
 //! mod args;
-//! use crate::args::args as args;
+//! use crate::argparse::args;
 //! let arg_result: args::Arg = args::parse_args();
 //! ```
 
@@ -26,8 +26,7 @@ pub mod args {
     /// ### Errors
     /// InvalidArg is used as a catch-all for missing/invalid arguments.
     /// It must be noted that non-UTF-8 CLI args will cause a panic. This is a limitation of
-    /// `std::env::args()`, and has been deemed better than the alternative of handling 
-    /// malformed text.
+    /// `std::env::args()`.
     pub fn parse_args() -> Arg {
         let args: Vec<String> = env::args().collect();
 

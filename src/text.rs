@@ -1,10 +1,15 @@
 use std::{fmt, io};
 
 /// Quote is an internal struct used to store both quote data and metadata.
-/// At this time, you can only initialise a Quote with data from stdin.
+/// For a Quote to be stored in the database, the title field must not be empty.
 /// ### Quickstart
+/// You can construct a Quote interactively with the following:
 /// ```
-/// let quote; Quote = Quote::new_from_input();
+/// let quote: Quote = Quote::new_from_input();
+/// ```
+/// Alternatively, if you need to construct it from pre-existing data, you can use `Quote::new()`
+/// ```
+/// let quote: Quote = Quote::new(title, author, text);
 /// ```
 pub struct Quote {
     title: String,
@@ -13,10 +18,14 @@ pub struct Quote {
 }
 
 impl Quote {
+    /// Returns the fields of the Quote as an ordered
+    /// array of String. The order is as follows: title, author, text 
     pub fn contents(&self) -> [String; 3] {
         [self.title.clone(), self.author.clone(), self.text.clone()]
     }
 
+    /// Static constructor for Quote. For dynamic construction
+    /// from user input, use `Quote::new_from_input()`
     pub fn new(title: String, author: String, text: String) -> Quote {
         Quote {
             title,
@@ -27,6 +36,7 @@ impl Quote {
 
     /// This method serves as an initialisaton for Quote.
     /// It takes the data and metadata fields directly from stdin, and handles user prompting.
+    /// For construction from known data, use `Quote::new()`
     pub fn new_from_input() -> Result<Quote, io::Error> {
         println!("Enter the title of the quote:");
         let user_title: String = take_input()?; // TODO: Make field required
@@ -50,6 +60,7 @@ impl fmt::Display for Quote {
     }
 }
 
+/// Private helper function for dynamic Quote construction
 fn take_input() -> Result<String, io::Error> {
     let mut input: String = String::new();
     io::stdin().read_line(&mut input)?;
