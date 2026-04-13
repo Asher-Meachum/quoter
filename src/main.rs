@@ -3,53 +3,75 @@ mod fileio;
 mod text;
 
 use rand::seq::IndexedRandom;
-use crate::{argparse::args, fileio::DataFile, text::Quote};
+use crate::{argparse::args, text::Quote};
 
-// TODO: Use static &str instead of String
-fn help_text() -> String {
-    String::from(
+fn help_text() -> &'static str {
 "Usage: quoter [OPTIONS]
 
 Options:
   -a, --add             Add a quote
+  -d, --delete  <title> Delete the quote with title <title>
   -h, --help            Display this help message
   -l, --list            Display stored quote names
-  -r, --read <title>    Read the quote with title <title>"
-    ) 
+  -r, --read    <title> Read the quote with title <title>"
 }
 
 fn main() {
-    fileio::initialise();
-
-    match args::parse_args() {
-        args::Arg::ArgError(error) => println!("{}", error),
-        args::Arg::Help => println!("{}", help_text()),
-        args::Arg::Add => {
-            let quote: Quote = Quote::new_from_input();
-            let quote_file: DataFile = DataFile::new_quote(quote.title());
-            quote_file.write(quote.to_file_format());
-
-            let index: DataFile = DataFile::new_index();
-            index.write(quote.title());
-        },
-        args::Arg::Generate => {
-            let index: DataFile = DataFile::new_index();
-            let files: String = index.read();
-            match files.trim().split("\n").collect::<Vec<&str>>().choose(&mut rand::rng()) {
-                Some(chosen) => {
-                    let quote: DataFile = DataFile::new_quote(String::from(*chosen));
-                    println!("{}", quote.read());
+    match fileio::initialise() {
+        Ok(storage) => {
+            let storage = storage;
+            match args::parse_args() {
+                args::Arg::InvalidArg(error) => println!("{}", error),
+                args::Arg::Help => println!("{}", help_text()),
+                args::Arg::Add => {
+                    let quote: Quote = match Quote::new_from_input() {
+                        Ok(q) => q,
+                        Err(_) => {
+                            eprintln!("Error: could not read input. Retrying...\n");
+                            Quote::new_from_input().expect("Retry failed. Exiting.")
+                        }, 
+                    };
+                    match storage.add(quote) {
+                        Ok(()) => println!("Successfully added quote."),
+                        Err(e) => eprintln!("Error: could not add quote {:?}", e),
+                    }
                 },
-                None => println!("No files stored. Use quoter --add to add one.")
-            };
+                args::Arg::Generate => {
+                    match storage.list() {
+                        Ok(list) => {
+                            match list.choose(&mut rand::rng()) {
+                                Some(chosen) => {
+                                    match storage.read(chosen.clone()) {
+                                        Ok(quote) => println!("{}", quote),
+                                        Err(_) => eprintln!("Error: could not read quote")
+                                    }
+                                },
+                                None => println!("No files stored. Use quoter --add to add one.")
+                            }
+                        },
+                        Err(e) => eprintln!("Error: could not retrieve random quote: {:?}", e),
+                    };
+                },
+                args::Arg::List => {
+                    match storage.list() {
+                        Ok(list) => println!("{:?}", list),
+                        Err(e) => eprintln!("Error: could not retrive quotes: {:?}", e)
+                    };
+                },
+                args::Arg::Read(title) => {
+                    match storage.read(title) {
+                        Ok(quote) => println!("{}", quote),
+                        Err(e) => eprintln!("Error: could not read quote: {:?}", e)
+                    }
+                },
+                args::Arg::Delete(title) => {
+                    match storage.delete(title.clone()) {
+                        Ok(_) => println!("Successfully deleted quote \"{title}\"."),
+                        Err(e) => println!("Error: could not delete quote \"{title}\": {:?}", e),
+                    }
+                },
+            }
         },
-        args::Arg::List => {
-            let index: DataFile = DataFile::new_index();
-            println!("Your stored quotes are:\n{}", index.read())
-        },
-        args::Arg::Read(title) => {
-            let quote: DataFile = DataFile::new_quote(title);
-            println!("{}", quote.read());
-        }
+        Err(e) => eprintln!("Error: could not initialise program: {:?}", e),
     }
 }
