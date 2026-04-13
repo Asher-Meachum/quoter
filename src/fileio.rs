@@ -35,8 +35,8 @@ impl From<rusqlite::Error> for StorageError {
 pub fn initialise() -> Result<QuoteStorage, StorageError> {
     let path: String = format!(
         "{}/{}", 
-        env::home_dir().expect("Internal error: could not find home directory").display().to_string(),
-         ".config/quoter".to_string()
+        env::home_dir().expect("Internal error: could not find home directory").display(),
+         ".config/quoter"
     );
     let db: String = format!("{}/{}", path, "quotes.sqlite");
 
